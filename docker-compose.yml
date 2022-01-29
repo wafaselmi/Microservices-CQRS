@@ -1,120 +1,114 @@
-version: '3.7'
+version: '3.8'
 services:
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:7.4.0
-    container_name: elasticsearch
+  mongo:
+    image: mongo:4.4
+    container_name: mongo
+    restart: unless-stopped
+    ports:
+      - 26000:27017
     environment:
-      - xpack.security.enabled=false
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=root
+      - MONGO_INITDB_DATABASE=cqrs
+      - MONGO_DB_USERNAME=user
+      - MONGO_DB_PASSWORD=user
+    volumes:
+      - ./db/mongo/data:/data/db/
+      - ./log/mongo/logs:/var/log/mongodb/
+      - ./initdb.d:/docker-entrypoint-initdb.d/
+    networks:
+      - main-network
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.16.3
+    container_name: es
+    environment:
       - discovery.type=single-node
+    mem_limit: 2g
     ulimits:
       memlock:
         soft: -1
         hard: -1
-      nofile:
-        soft: 65536
-        hard: 65536
-    cap_add:
-      - IPC_LOCK
     volumes:
-      - elasticsearch-data:/usr/share/elasticsearch/data
-    logging:
-      driver: none
+      - ./db/es/data:/usr/share/elasticsearch/data
     ports:
       - 9200:9200
       - 9300:9300
     networks:
-      - cqrs_net
-
-  kibana:
-    container_name: kibana
-    image: docker.elastic.co/kibana/kibana:7.4.0
-    environment:
-      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - main-network
+  
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: 'rabbitmq'
     ports:
-      - 5601:5601
+        - 5672:5672
+        - 15672:15672
+    volumes:
+        - ./rabbitmq/data/:/var/lib/rabbitmq/
+        - ./rabbitmq/log/:/var/log/rabbitmq
+    networks:
+        - main-network
+  
+  query:
+    container_name: query
     depends_on:
       - elasticsearch
-    logging:
-      driver: none
+      - rabbitmq
+      - registry
+      - config
+      - apigateway
+    build: ./query
+    restart: on-failure
     networks:
-      - cqrs_net
+      - main-network
 
-  mongodb:
-    image : mongo
-    container_name: mongodb
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - MONGO_INITDB_DATABASE=cqrs
-    volumes:
-      - mongo_data:/data/db
-    ports:
-      - 27017:27017
-    restart: unless-stopped
-    logging:
-      driver: none
+  command:
+    container_name: command
+    depends_on:
+      - mongo
+      - rabbitmq
+      - registry
+      - config
+      - apigateway
+    build: ./command
+    restart: on-failure
     networks:
-      - cqrs_net
-
-  read_ms:
-    container_name: read_microservice
-    build:
-      context: ./read-ms
-    volumes:
-      - ./read-ms:/usr/src/app
-    command: npm run start:dev
-    networks:
-      - cqrs_net
-
-  api_gateway:
-    container_name: api_gateway
-    build:
-      context: ./api-gateway
-    volumes:
-      - ./api-gateway:/usr/src/app
-    command: npm run start:dev
+      - main-network
+  
+  apigateway:
+    container_name: apigateway
+    depends_on:
+      - registry
+    build: ./apigateway
+    restart: on-failure
     ports:
       - 8080:8080
     networks:
-      - cqrs_net
-
-  write_ms:
-    container_name: write_microservice
-    build:
-      context: ./write-ms
-    volumes:
-      - ./write-ms:/usr/src/app
-    command: npm run start:dev
+      - main-network
+      - test-network
+    
+  registry:
+    container_name: registry
+    depends_on:
+      - config
+    build: ./registry
+    restart: on-failure
     ports:
-      - 3000:3000
+      - 8761:8761
     networks:
-      - cqrs_net
+      - main-network
 
-  sync_pipeline:
-    container_name: sync_pipeline
-    build:
-      context: ./sync-pipeline
-    volumes:
-      - ./sync-pipeline:/usr/src/app
-    command: npm run start:dev
+  config:
+    container_name: config
+    build: ./config
+    restart: on-failure
     networks:
-      - cqrs_net
+      - main-network
+    
 
-  redis:
-    container_name: redis
-    image: 'redis:alpine'
-    command:
-      - redis-server
-    networks:
-      - cqrs_net
-    ports:
-      - 6379:6379
-    volumes:
-      - $PWD/redis-data:/var/lib/redis
-      - $PWD/redis.conf:/usr/local/etc/redis/redis.conf
-
-volumes:
-  mongo_data:
-  elasticsearch-data:
 networks:
-  cqrs_net:
+  main-network:
+# External network
+  test-network:
+    external: 
+      name: network-for-stress-tests
