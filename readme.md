@@ -11,7 +11,7 @@ __CQRS__ stands for __Command and Query Responsibility Segregation__, a pattern 
 ## Project architecture
 
 <p align="center">
-  <img src="./assets/cqrs_architecture.png" alt="design" />
+  <img src="./assets/architecture.png" alt="design" />
 </p>
 
 - __Config Service (Spring Cloud Config):__ The service that's going to provide the services config. The service configuration files are provided in the following [GitHub repository](https://github.com/hajali-amine/microservices-cqrs-configs).
