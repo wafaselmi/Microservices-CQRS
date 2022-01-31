@@ -25,7 +25,7 @@ __CQRS__ stands for __Command and Query Responsibility Segregation__, a pattern 
 ## A closer look on our MicroServices
 
 <p align="center">
-  <img src="./assets/cqrs.png" alt="design" />
+  <img src="./assets/RabbitMQ.png" alt="design" />
 </p>
 
 ## Try it yourself!
