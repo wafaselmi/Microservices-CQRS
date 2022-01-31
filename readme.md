@@ -32,8 +32,8 @@ __CQRS__ stands for __Command and Query Responsibility Segregation__, a pattern 
 
 It's easy! All you have to do is open your terminal in the root of the project and use the following command.
 ``` console
-aminehajali@cqrs:~/cqrs-microservices$ docker-compose build
-aminehajali@cqrs:~/cqrs-microservices$ docker-compose up
+docker-compose build
+docker-compose up
 ```
 Now, when you have started the project, you can check if your services have been registered or not by visiting:
 > http://localhost:8761/
