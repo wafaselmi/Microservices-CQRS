@@ -11,8 +11,8 @@ import org.springframework.stereotype.Component;
 public class BuyProductReceiver {
     ProductService productService;
 
-    public BuyProductReceiver(ProductService productService) {
-        this.productService = productService;
+    public BuyProductReceiver(ProductService service) {
+        this.productService = service;
     }
 
     @RabbitListener(queues = "buy-product-queue")
